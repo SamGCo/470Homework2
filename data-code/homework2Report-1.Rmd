@@ -1,0 +1,77 @@
+---
+title: "Homework 2"
+author: "Sam Cohen"
+date: "2023-02-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+
+
+```
+
+## Answers
+### 1. 
+There were 2329 providers across the years that submitted more than 1 report in a single year.
+```{r}
+knitr::include_graphics("C:/Users/squam/OneDrive/Desktop/470hw2/multipleReports.png")
+```
+
+### 2. 
+
+There are 9323 unique provider numbers over the years.
+
+### 3.
+
+```{r}
+knitr::include_graphics("C:/Users/squam/OneDrive/Desktop/470hw2/violinPlot.png")
+```
+
+### 4. 
+
+```{r}
+knitr::include_graphics("C:/Users/squam/OneDrive/Desktop/470hw2/violinPlotPrices.png")
+```
+
+### 5
+
+The average price for penalized hospitals is 10,234.98 whereas the average price for non-penalized providers is 9,653.264.
+
+### 6
+
+```{r}
+library(dplyr)
+library(readr)
+answer6=read_rds('C:/Users/squam/OneDrive/Desktop/470hw2/data/output/answer6.rds')
+table6<-answer6 %>% group_by(group,quartile1, quartile2, quartile3, quartile4) %>% summarize(price_mean=mean(price,na.rm=TRUE))
+table6
+```
+
+
+### 7
+
+```{r}
+library(knitr)
+library(dplyr)
+library(readr)
+table7=read_rds('C:/Users/squam/OneDrive/Desktop/470hw2/data/output/table7.rds')
+table7 %>%
+kable() 
+```
+
+### 8 
+
+Each of these estimators are different, but there certainly some that are closer than others. For example, the linear regression, as well as inverse propensity weighing estimates are very close, 1037 and 1022. These differ greater though from the two nearest neighbor matchings.
+
+### 9 
+
+It is unlikely we have sufficiently estimated the effect of the penalty as we are not controlling for enough factors. Number of beds is most likely not the only metric we should use to control or determine similarity between providers, in order to determine an accurate estimate.
+
+### 10 
+
+Honestly I struggled a lot with 6 and 7. With 6, the first part was fairly easy, but for whatever reason, creating a table as you specified was very difficult for me. I assume the best way would be to use the pivot_wider function, but I was not able to get it to work properly. In addition to this, 7 was similarly difficult as I found it hard to know exactly how to incorperate the quartiles, as well as how to make a good table.
+
