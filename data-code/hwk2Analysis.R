@@ -83,10 +83,10 @@ covs<-select(answer6_complete,quartile1,quartile2,quartile3,quartile4)
 covs<-as_tibble(covs)
 
 
-logit.reg <- glmnn.est1 <- Matching::Match(Y=answer6_complete$price,
+nn.est1 <- Matching::Match(Y=answer6_complete$price,
                            Tr=answer6_complete$penalized,
                            X=covs,
-                           M=3,
+                           M=1,
                            Weight=1,
                            estimand="ATE")
 summary(nn.est1)
@@ -95,7 +95,7 @@ summary(nn.est1)
 nn.est2 <- Matching::Match(Y=answer6_complete$price,
                            Tr=answer6_complete$penalized,
                            X=covs,
-                           M=3,
+                           M=1,
                            Weight=2,
                            estimand="ATE")
 summary(nn.est2)
@@ -139,3 +139,5 @@ table7<-table7[-c(1,3,4,5,6),]
 table7<-as.data.frame(table7)
 rownames(table7)<-c("Linear Regression","Inverse Propensity Weighting","Nearest Neighbor (Inverse Variance)","Nearest Neighbor (Mahalanobis)")
 write_rds(table7,'data/output/table7.rds')
+table7
+
