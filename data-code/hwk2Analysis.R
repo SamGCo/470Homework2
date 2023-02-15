@@ -19,9 +19,10 @@ hw2figure1<-ggsave(filename="multipleReports.png",multipleReportGraph,height=8,w
 answer2<- length(unique(final.hcris$provider_number))
 
 # number 3
-options(repr.plot.width=15, repr.plot.height=8)
-answer3<- final.hcris.data %>% 
-  group_by(year)%>%
+
+answer3<- final.hcris.data %>%
+  #ungroup()%>%
+  filter(tot_charges<10000000 && tot_charges>0)%>%
   ggplot(aes(x = as.factor(year), y = tot_charges)) +
   geom_jitter(alpha = .05) +
   geom_violin(alpha = .9)
@@ -37,20 +38,21 @@ mutate(price_num = (ip_charges + icu_charges + ancillary_charges)*discount_facto
 mutate(price_denom = tot_discharges - mcare_discharges)%>%
 mutate(price = price_num/price_denom)
 answer4Graph<- answer4 %>% 
+  filter(price<20000 && price >0)%>%
   group_by(year)%>%
   ggplot(aes(x = as.factor(year), y = price)) +
   geom_jitter(alpha = .05) +
   geom_violin(alpha = .9)
 answer4Graph
 
-hw2figure3<-ggsave(filename="violinPlotPrices.png",answer3,height=8,width=10)
+hw2figure3<-ggsave(filename="violinPlotPrices.png",answer4Graph,height=8,width=10)
 
 # number 5
 
-new2012Final<-subset(answer4,year==2012)
+new2012Final<-answer4%>% filter(price>0 && price < 40000) %>%subset(year==2012)
 new2012Final["hvbp_payment"][is.na(new2012Final["hvbp_payment"])] <- 0
 new2012Final["hrrp_payment"][is.na(new2012Final["hrrp_payment"])] <- 0
-new2012Final<-mutate(new2012Final,penalized=case_when(hvbp_payment+hrrp_payment<0~1,hvbp_payment+hrrp_payment>=0~0))
+new2012Final<-mutate(new2012Final,penalized=case_when(hvbp_payment-abs(hrrp_payment)<0~1,hvbp_payment-abs(hrrp_payment)>=0~0))
 answer5Penalized<-(subset(new2012Final,penalized==1))
 answer5.1<-mean(answer5Penalized$price,na.rm=TRUE)
 answer5Un<-(subset(new2012Final,penalized==0))
@@ -70,15 +72,21 @@ answer6<-mutate(answer6, quartile4=case_when(beds<=buckets[5]&& beds>buckets[4]~
 answer6<- answer6 %>%
   mutate(group = case_when(penalized<=0~"Control",TRUE~"Treatment"))
 
-write_rds(answer6,'data/output/answer6.rds')
-table6<-answer6 %>% group_by(group,quartile1, quartile2, quartile3, quartile4) %>% summarize(price_mean=mean(price,na.rm=TRUE))
+answer6_complete <- answer6[complete.cases(answer6[, c("price", "penalized")]), ]
+write_rds(answer6_complete,'data/output/answer6.rds')
+table6<-answer6_complete %>% group_by(group,quartile1, quartile2, quartile3, quartile4) %>% summarize(price_mean=mean(price,na.rm=TRUE))
 table6
 # start of 7.1
-answer6_complete <- answer6[complete.cases(answer6), ]
+
+answer6_complete<-ungroup(answer6_complete)
+covs<-select(answer6_complete,quartile1,quartile2,quartile3,quartile4)
+covs<-as_tibble(covs)
+
+
 logit.reg <- glmnn.est1 <- Matching::Match(Y=answer6_complete$price,
                            Tr=answer6_complete$penalized,
-                           X=answer6_complete$beds,
-                           M=1,
+                           X=covs,
+                           M=3,
                            Weight=1,
                            estimand="ATE")
 summary(nn.est1)
@@ -86,13 +94,14 @@ summary(nn.est1)
 
 nn.est2 <- Matching::Match(Y=answer6_complete$price,
                            Tr=answer6_complete$penalized,
-                           X=answer6_complete$beds,
-                           M=1,
+                           X=covs,
+                           M=3,
                            Weight=2,
                            estimand="ATE")
 summary(nn.est2)
 
 #7.3
+library(modelr)
 logit.reg <- glm(penalized ~ quartile1+quartile2+quartile3,
                  data = answer6_complete, family = binomial(link = 'logit'))
 
@@ -104,6 +113,7 @@ answer6_complete <- answer6_complete %>%
     penalized == 1 ~ 1/ps,
     penalized == 0 ~ 1/(1-ps)
   ))
+
 
 
 mean.t1 <- answer6_complete %>% filter(penalized==1) %>% summarize(mean_y=weighted.mean(price, w=ipw))
@@ -125,4 +135,7 @@ nnest2row<-c("penalized",nnest2Estimates,nn.est2$se,NA,NA)
 table7<-full_join(tidyReg,tidyIPW)
 table7<-rbind(table7,nnest1row)
 table7<-rbind(table7,nnest2row)
+table7<-table7[-c(1,3,4,5,6),]
+table7<-as.data.frame(table7)
+rownames(table7)<-c("Linear Regression","Inverse Propensity Weighting","Nearest Neighbor (Inverse Variance)","Nearest Neighbor (Mahalanobis)")
 write_rds(table7,'data/output/table7.rds')
