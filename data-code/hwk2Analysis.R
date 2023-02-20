@@ -1,9 +1,12 @@
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, ggplot2, dplyr, lubridate)
 finalData=read_rds('data/output/HCRIS_Data.rds')
 #number 1
 answer1<-final.hcris %>%group_by(provider_number,fyear)%>%
 summarize(count=n())
-filtered1<-answer1%>%
-  filter(count>1)
+filtered1<-answer1%>% filter(count>1)
+
+test<-unique(filtered1$provider_number)
 
 table1<-table(filtered1$fyear,filtered1$count)
 backtoDF<-as.data.frame.matrix(table1)
@@ -49,7 +52,7 @@ hw2figure3<-ggsave(filename="violinPlotPrices.png",answer4Graph,height=8,width=1
 
 # number 5
 
-new2012Final<-answer4%>% filter(price>0 && price < 40000) %>%subset(year==2012)
+new2012Final<-answer4%>% filter(price>0 && price < 50000) %>%subset(year==2012)
 new2012Final["hvbp_payment"][is.na(new2012Final["hvbp_payment"])] <- 0
 new2012Final["hrrp_payment"][is.na(new2012Final["hrrp_payment"])] <- 0
 new2012Final<-mutate(new2012Final,penalized=case_when(hvbp_payment-abs(hrrp_payment)<0~1,hvbp_payment-abs(hrrp_payment)>=0~0))
@@ -68,14 +71,27 @@ answer6<-mutate(answer6, quartile2=case_when(beds<=buckets[3]&& beds>buckets[2]~
 answer6<-mutate(answer6, quartile3=case_when(beds<=buckets[4]&& beds>buckets[3]~1,TRUE~0))
 answer6<-mutate(answer6, quartile4=case_when(beds<=buckets[5]&& beds>buckets[4]~1,TRUE~0))
 
+
 # create matrix with 4 columns and 4 rows
 answer6<- answer6 %>%
   mutate(group = case_when(penalized<=0~"Control",TRUE~"Treatment"))
 
 answer6_complete <- answer6[complete.cases(answer6[, c("price", "penalized")]), ]
-write_rds(answer6_complete,'data/output/answer6.rds')
+
 table6<-answer6_complete %>% group_by(group,quartile1, quartile2, quartile3, quartile4) %>% summarize(price_mean=mean(price,na.rm=TRUE))
 table6
+
+# group by penalized and bed quart before, mix quartiles into 1
+answer6_complete$Quartiles<-0
+answer6_complete$Quartiles[answer6_complete$quartile1==1]<-1
+answer6_complete$Quartiles[answer6_complete$quartile2==1]<-2
+answer6_complete$Quartiles[answer6_complete$quartile3==1]<-3
+answer6_complete$Quartiles[answer6_complete$quartile4==1]<-4
+readr::write_rds(answer6_complete,'data/output/answer6.rds')
+table6<- answer6_complete %>%
+  group_by(Quartiles, group) %>%
+  summarise(mean_price = mean(price)) %>%
+  pivot_wider(names_from = group, values_from = mean_price, names_prefix = "mean_price_")
 # start of 7.1
 
 answer6_complete<-ungroup(answer6_complete)
@@ -126,8 +142,8 @@ reg.ipw
 reg <-  lm(price ~ penalized+quartile1  + quartile2 + quartile3, data=answer6_complete)
 summary(reg)
 
-tidyReg<-tidy(reg)
-tidyIPW<-tidy(reg.ipw)
+tidyReg<-broom::tidy(reg)
+tidyIPW<-broom::tidy(reg.ipw)
 nnest1Estimates<-nn.est1$est
 nnest1row<-c("penalized",nnest1Estimates,nn.est1$se,NA,NA)
 nnest2Estimates<-nn.est2$est
@@ -138,6 +154,6 @@ table7<-rbind(table7,nnest2row)
 table7<-table7[-c(1,3,4,5,6),]
 table7<-as.data.frame(table7)
 rownames(table7)<-c("Linear Regression","Inverse Propensity Weighting","Nearest Neighbor (Inverse Variance)","Nearest Neighbor (Mahalanobis)")
-write_rds(table7,'data/output/table7.rds')
+readr::write_rds(table7,'data/output/table7.rds')
 table7
 
